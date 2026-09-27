@@ -1,8 +1,8 @@
 {-# LANGUAGE RankNTypes #-}
 
--- | van Laarhoven（Functor）形态：更丰富的可运行示例
+-- | van Laarhoven（Functor）形态：原理 + 组合 + 丰富示例
 --
--- 详细教程：docs/van-Laarhoven教程.md
+-- 详细教程：docs/van-Laarhoven教程.md（含 §2 原理、§3 组合）
 -- 注意：这里的 Functor f 是「效果容器」，不是 Functor strength / Tambara。
 module Main where
 
@@ -87,16 +87,13 @@ personCity = addressL . cityL
 -- 4. 类型会变的 Lens（s≠t 或 a≠b）
 ------------------------------------------------------------------------
 
--- | 把 (String, c) 的焦点从 String 改成 Int（长度）
 _1Len :: Lens (String, c) (Int, c) String Int
 _1Len = lens fst (\(_, c) n -> (n, c))
 
 ------------------------------------------------------------------------
--- 5. 再用一个 Functor：Const (Sum n) 做「读一个 Int 焦点」的加权演示
---    （真正的 foldOf / Traversal 要 Applicative；这里只展示换 f）
+-- 5. 换 f：Const (Sum n)
 ------------------------------------------------------------------------
 
--- | 把焦点 Int 包进 Sum，再取出（说明 view 本质是挑 Const）
 viewAsSum :: Lens' s Int -> s -> Int
 viewAsSum l s = getSum (getConst (l (\n -> Const (Sum n)) s))
 
@@ -115,8 +112,11 @@ alice =
 nestedPair :: ((Bool, Int), Char)
 nestedPair = ((True, 1), 'x')
 
+deepTriple :: (((Bool, Int), Char), String)
+deepTriple = (((True, 1), 'x'), "z")
+
 ------------------------------------------------------------------------
--- main：分段打印，方便对照教程
+-- main
 ------------------------------------------------------------------------
 
 main :: IO ()
@@ -126,13 +126,22 @@ main = do
   print $ set  _1 False (True, 42 :: Int)
   print $ over _2 (*10) (True, 42 :: Int)
 
-  putStrLn "======== 2. 复合 = (.) ========"
+  putStrLn "======== 2. 组合 = (.)（原理见教程 §3） ========"
+  -- (l . m) afb = l (m afb)
   print $ view (_1 . _1) nestedPair
   print $ set  (_1 . _2) (99 :: Int) nestedPair
   print $ over (_1 . _2) (+5) nestedPair
-  -- rank-2：下面这种 let 往往会丢掉 forall f，view 类型对不上：
-  --   let l = _1 . _1 in view l nestedPair
-  -- 保持内联或加显式多态签名即可。
+  -- 三层
+  print $ view (_1 . _1 . _1) deepTriple
+  print $ over (_1 . _1 . _2) (*10) deepTriple
+  -- 分配律：view (l.m) = view m . view l
+  print $ view (_1 . _2) nestedPair == view _2 (view _1 nestedPair)
+  print $ over (_1 . _2) (+5) nestedPair
+         == over _1 (over _2 (+5)) nestedPair
+  -- 单位：id :: Lens' a a
+  print $ view (id . _1) (True, 42 :: Int)
+  print $ view (_1 . id) (True, 42 :: Int)
+  -- rank-2：不要 let l = _1 . _1 再 view l
 
   putStrLn "======== 3. 记录字段 ========"
   print $ view nameL alice
@@ -144,20 +153,16 @@ main = do
   print $ view personCity alice
   print $ set  personCity "Beijing" alice
   print $ over (addressL . zipL) (+1) alice
+  print $ view (addressL . zipL) alice
+         == view zipL (view addressL alice)
 
   putStrLn "======== 5. 类型会变：String 焦点 → Int ========"
   print $ view _1Len ("hi", True)
   print $ over _1Len length ("hi", True)
-  -- over 后整树类型变成 (Int, Bool)
 
   putStrLn "======== 6. 换 f：Const (Sum Int) ========"
   print $ viewAsSum ageL alice
   print $ viewAsSum (addressL . zipL) alice
 
-  putStrLn "======== 7. 手写展开一次 view（对照教程逐步表） ========"
-  -- view nameL alice
-  --   = getConst (nameL Const alice)
-  --   = getConst (fmap (\n -> alice{_name=n}) (Const (_name alice)))
-  --   = getConst (Const "Alice")
-  --   = "Alice"
+  putStrLn "======== 7. 手写展开一次 view ========"
   print $ getConst (nameL Const alice)

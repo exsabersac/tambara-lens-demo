@@ -6,7 +6,7 @@
 三种形态总表：[Lens二形态对比.md](Lens二形态对比.md)。  
 Tambara / Strong 线：[原理详解.md](原理详解.md)。
 
-本文比初版更细：逐步类型推导、记录嵌套、类型会变的 Lens、换 `f` 的多种用法，以及和 Strong/`Forget` 的一一对照。
+本文比初版更细：原理（为何 `forall f` 够用）、**Lens 组合**（为何是 `(.)`、类型怎么拼）、逐步类型推导、记录嵌套、类型会变、换 `f`，以及和 Strong/`Forget` 对照。
 
 ---
 
@@ -40,7 +40,206 @@ type Lens' s a = Lens s s a a
 
 ---
 
-## 2. 从 get/set 拼出来（核心公式）
+## 2. 原理：为什么这样定义就够了？
+
+### 2.1 它在范畴上在说什么
+
+把「焦点上的修改」看成一个映射族：
+
+\[
+\alpha_f : (a \to f\, b) \to (s \to f\, t)
+\]
+
+并对 **每一个** Functor \(f\) 都给出一个 \(\alpha_f\)，且与 `fmap` 相容（自然语言变换条件：\(\alpha\) 对 `fmap` 自然）。van Laarhoven 观察是：
+
+> 这样一套自然的 \(\alpha\) **恰好**对应一对「取焦点 / 装回」——也就是经典 get/set。
+
+Haskell 里不写自然性条件，而是写成单个多态函数：
+
+```haskell
+forall f. Functor f => (a -> f b) -> s -> f t
+```
+
+`Functor` 约束保证你只能用 `fmap` 把「新焦点 → 新整树」抬进效果；你不能对 `f` 做额外拆包（那会破坏「任意 f」）。于是程序形态被逼成：
+
+```text
+取焦点 → 在焦点上跑 afb → fmap 装回
+```
+
+这正是 `lens get setP` 那一行。
+
+### 2.2 为何「任意 Functor」而不是某一个？
+
+若只对某一个 `f` 成立，你只能做那一种运算。  
+对 **所有** Functor 成立，意味着同一段代码在代入 `Const` / `Identity` / … 时都能类型检查——于是 **一种编码、多种运算**。
+
+直觉对照：
+
+| 你固定住的东西 | 你得到的能力 |
+|----------------|--------------|
+| 只固定 `Identity` | 只能 `over`/`set` |
+| 只固定 `Const` | 只能 `view` |
+| 对所有 `f` 都给出同一段程序 | 上面两种（以及更多）都能抽出 |
+
+这与 Strong 形态「对所有 Strong `p` 给出同一段程序」是平行设计：量化范围 = 可抽取运算的菜单。
+
+### 2.3 和 get/set 的信息量
+
+从 (A) 到 (C)：`lens get setP` 把两个函数打包进一个多态函数。  
+从 (C) 回到 (A)：用 `Const` / `Identity` 特化，收回 `view` 与 `set`。
+
+因此在「合法 Lens」上，**(A) 与 (C) 携带的信息相同**；差别在复合方式与和 Prism/Traversal 的统一路径。定律（get-set / set-get / set-set）仍对收回的 get/set 陈述；VL 侧常写成对 `view`/`set`/`over` 的同款等式。
+
+### 2.4 单焦点 ↔ `Functor`（为 Traversal 埋伏笔）
+
+装回一步只需要 `fmap :: (b -> t) -> f b -> f t`——这是 **一个** 新焦点对应 **一棵** 新整树。  
+若有多个焦点，要把多处 `f b` 拼成一个 `f t`，就需要 `pure` 与 `<*>`，即把约束升到 `Applicative`（Traversal）。  
+所以：`Functor` 不是随便选的，它精确对应「单焦点、上下文唯一」的 Lens。
+
+---
+
+## 3. 原理：Lens 之间如何组合？
+
+### 3.1 为什么组合就是 `(.)`？
+
+把 `Lens s t a b` 的类型括号写清楚：
+
+```haskell
+Lens s t a b
+  ≅ forall f. Functor f => (a -> f b) -> (s -> f t)
+```
+
+对固定的 `f`，这就是普通函数类型 `X -> Y`。  
+两个这种函数按中间类型对接，就是 Haskell 的函数复合 `(.)`。
+
+设
+
+```haskell
+l :: Lens s t a b   -- (a -> f b) -> (s -> f t)
+m :: Lens a b c d   -- (c -> f d) -> (a -> f b)
+```
+
+则
+
+```haskell
+l . m :: Lens s t c d
+-- 因为 (l . m) afb = l (m afb)
+```
+
+展开一句：
+
+```text
+(l . m) afb s
+  = l (m afb) s
+  = 「先用 m 把『焦点 c 上的效果』抬成『中层 a 上的效果』，
+      再用 l 抬成『整树 s 上的效果』」
+```
+
+**没有**单独的 `composeLens`；编码本身已是函数，复合运算被「偷」成了 `(.)`。
+
+### 3.2 类型参数怎么拼？（必看表）
+
+| 透镜 | `s` | `t` | `a` | `b` | 口语 |
+|------|-----|-----|-----|-----|------|
+| 外层 `l` | 大树前 | 大树后 | **中层前** | **中层后** | 「从大树看到中层」 |
+| 内层 `m` | **中层前** | **中层后** | 焦点前 | 焦点后 | 「从中层看到焦点」 |
+| 复合 `l . m` | 大树前 | 大树后 | 焦点前 | 焦点后 | 「从大树直接看到焦点」 |
+
+中层的 `a`/`b` 被消掉：外层的焦点类型 = 内层的整树类型。
+
+`Lens'` 特例更简单：
+
+```haskell
+l :: Lens' S A
+m :: Lens' A C
+l . m :: Lens' S C
+```
+
+### 3.3 书写顺序：路径从左到右
+
+Haskell 里 `(l . m)` 表示「先应用 `m`，再应用 `l`」（函数复合惯例）。  
+读路径时人们常说「先 `addressL` 再 `cityL`」——那是 **进入数据结构的顺序**，对应代码里也写作 `addressL . cityL`（外层在左、内层在右）：
+
+```haskell
+personCity = addressL . cityL
+-- 外层 addressL :: Lens' Person Address
+-- 内层 cityL    :: Lens' Address String
+-- 复合           :: Lens' Person String
+```
+
+与 get/set 手写复合对照：
+
+```haskell
+-- (A) 必须自己写：
+compose l m = Lens
+  { view = view m . view l
+  , set  = \s b -> set l s (set m (view l s) b)
+  }
+
+-- (C) 直接：
+l . m
+```
+
+Strong 形态同样是 `(.)`。**(A) 复合啰嗦，(B)(C) 复合免费**——这是换编码的主要工程收益之一。
+
+### 3.4 结合律与单位
+
+因为 `(.)` 本身满足：
+
+```text
+(l . m) . n  =  l . (m . n)
+id . l       =  l  =  l . id
+```
+
+其中「单位透镜」在 VL 里就是普通的 `id`（在合适类型下）：
+
+```haskell
+id :: Lens' a a   -- 焦点 = 整树
+```
+
+三层嵌套只需连写：
+
+```haskell
+-- 例如：((a,b),c) 的最内左焦点
+_1 . _1          -- 两层
+-- 记录：若还有 Country 包着 Address，可写成
+-- countryL . addressL . cityL
+```
+
+结合律保证括号怎么加语义不变（类型能对上的前提下）。
+
+### 3.5 组合后运算如何作用？
+
+`view` / `over` 不关心透镜是「原子」还是「复合」——它们只代入某个 `f`：
+
+```haskell
+view (l . m) s     = view m (view l s)          -- 读：先外后内
+over (l . m) f s   = over l (over m f) s        -- 改：在外层里改「内层整树」
+```
+
+第二式用 Identity 展开即：`l` 的 `afb` 被设成 `m (Identity . f)`，于是内层先改焦点，外层再把改过的中层装回大树。
+
+定律在复合下保持：若 `l`、`m` 各自满足 Lens 定律，则 `l . m` 也满足（对收回的 get/set 而言）。
+
+### 3.6 与 Strong 组合的对照
+
+| | Strong (B) | VL (C) |
+|--|------------|--------|
+| 编码 | `p a b -> p s t` | `(a -> f b) -> s -> f t` |
+| 复合 | `(.)` | `(.)` |
+| 展开 | `(l . m) pab = l (m pab)` | `(l . m) afb = l (m afb)` |
+| 读路径 | 外 `.` 内 | 同左 |
+
+差别不在组合机制，而在「中间被传递的东西」是 `p a b` 还是 `a -> f b`。
+
+### 3.7 rank-2 与组合
+
+组合结果仍是 rank-2。`let` 绑死某个具体 `f` 后，就不能再拿去 `view`（要 `Const`）又 `over`（要 `Identity`）。  
+组合本身不引入新坑；**绑定多态透镜**才是坑。写法：内联 `view (l . m) s`，或给 `l . m` 显式 `Lens`/`Lens'` 签名。
+
+---
+
+## 4. 从 get/set 拼出来（核心公式）
 
 ```haskell
 lens :: (s -> a) -> (s -> b -> t) -> Lens s t a b
@@ -48,7 +247,7 @@ lens get setP afb s =
   fmap (setP s) (afb (get s))
 ```
 
-### 2.1 逐步类型表
+### 4.1 逐步类型表
 
 固定一次调用：`afb :: a -> f b`，`s :: s`。
 
@@ -61,7 +260,7 @@ lens get setP afb s =
 
 这与 get/set 语义相同：先看再改再装；`fmap` 负责「在效果 `f` 里」完成装回。
 
-### 2.2 用具体数字走一遍（`over`）
+### 4.2 用具体数字走一遍（`over`）
 
 设 `s = (True, 42)`，`_2 = lens snd (\(c,_) b -> (c,b))`，要做 `over _2 (*10)`。
 
@@ -73,7 +272,7 @@ lens get setP afb s =
 4. `fmap (setP s) (Identity 420) = Identity (True, 420)`
 5. `runIdentity` → `(True, 420)`
 
-### 2.3 用同一 Lens 走一遍（`view`）
+### 4.3 用同一 Lens 走一遍（`view`）
 
 `view _2 (True, 42)` 时 `afb = Const`（见下一节）：
 
@@ -86,9 +285,9 @@ lens get setP afb s =
 
 ---
 
-## 3. 换不同的 `f` → 不同运算
+## 5. 换不同的 `f` → 不同运算
 
-### 3.1 `view`：用 `Const`
+### 5.1 `view`：用 `Const`
 
 ```haskell
 newtype Const r a = Const { getConst :: r }
@@ -103,7 +302,7 @@ view l s = getConst (l Const s)
 这里 `afb = Const`，类型是 `a -> Const a b`。  
 Lens 被迫只「读」出 `a`；装回用 `fmap` 也不改变那个 `a`。
 
-### 3.2 `over` / `set`：用 `Identity`
+### 5.2 `over` / `set`：用 `Identity`
 
 ```haskell
 over l f s = runIdentity (l (Identity . f) s)
@@ -112,7 +311,7 @@ set  l b   = over l (const b)
 
 `f = Identity` 表示「没有额外效果，就是普通改值」。
 
-### 3.3 再换一次：`Const (Sum Int)`（演示「换 f」）
+### 5.3 再换一次：`Const (Sum Int)`（演示「换 f」）
 
 不必只用于「原样取出焦点」。例如把焦点 `Int` 先包进 `Sum`，再解开：
 
@@ -125,7 +324,7 @@ viewAsSum l s =
 语义仍是「读那个 Int」，但路径是：`a -> Const (Sum Int) b`。  
 教程里用它只为强调：**运算 = 选一个 Functor 实例**，不是 Lens 里另写一套 API。
 
-（真正的 `foldMapOf` / 多焦点累加属于 Traversal + `Applicative`，见 §8。）
+（真正的 `foldMapOf` / 多焦点累加属于 Traversal + `Applicative`，见 §11。）
 
 ### 对照表
 
@@ -138,7 +337,7 @@ viewAsSum l s =
 
 ---
 
-## 4. 例子 A：元组（与 Step 1 / 2 同一场景）
+## 6. 例子 A：元组（与 Step 1 / 2 同一场景）
 
 ```haskell
 _1 = lens fst (\(_, c) b -> (b, c))
@@ -149,37 +348,22 @@ set  _1 False (True, 42)     -- (False, 42)
 over _2 (*10) (True, 42)     -- (True, 420)
 ```
 
-### 复合 = `(.)`
-
-VL 的 `Lens` 本身是函数类型，复合就是普通函数复合：
+### 复合示例（原理见 §3）
 
 ```haskell
-view (_1 . _1) ((True, 1), 'x')   -- True
+view (_1 . _1) ((True, 1), 'x')    -- True
 set  (_1 . _2) 99 ((True, 1), 'x') -- ((True, 99), 'x')
-over (_1 . _2) (+5) …              -- ((True, 6), 'x')
+over (_1 . _2) (+5) …               -- ((True, 6), 'x')
+
+-- 三层：(((Bool, Int), Char), String) 的最内左
+view (_1 . _1 . _1) (((True, 1), 'x'), "z")  -- True
 ```
 
-类型上：`(_1 . _1)` 先对「外层左分量」用 `_1`，再对「内层左分量」用 `_1`。
-
-**rank-2 坑**（与 Strong 形态相同）：
-
-```haskell
--- 容易挂：
-let l = _1 . _1
-in view l ((True, 1), 'x')
--- GHC 可能把 l 单态成某个具体 f0，再 view 时 Const 对不上。
-
--- 稳妥：保持内联
-view (_1 . _1) …
-
--- 或给显式多态签名（进阶）
-l :: Lens' ((a, b), c) a
-l = _1 . _1
-```
+`view (l . m) = view m . view l`；`over (l . m) f = over l (over m f)`。rank-2：不要对 `l . m` 做单态 `let`（§3.7）。
 
 ---
 
-## 5. 例子 B：记录字段与嵌套
+## 7. 例子 B：记录字段与嵌套
 
 ```haskell
 data Address = Address { _city :: String, _zip :: Int }
@@ -223,7 +407,7 @@ over (addressL . zipL) (+1) alice
 
 ---
 
-## 6. 例子 C：类型会变的 Lens
+## 8. 例子 C：类型会变的 Lens
 
 `Lens s t a b` 允许焦点类型从 `a` 变成 `b`，整树从 `s` 变成 `t`。
 
@@ -241,7 +425,7 @@ over _1Len length ("hi", True)    -- (2, True) :: (Int, Bool)
 
 ---
 
-## 7. 手写展开：`view nameL alice`
+## 9. 手写展开：`view nameL alice`
 
 把 `lens` 公式和 `Const` 代进去（与 demo 第 7 段一致）：
 
@@ -267,7 +451,7 @@ over ageL (+1) alice
 
 ---
 
-## 8. 与 (A) get/set、(B) Strong 对照
+## 10. 与 (A) get/set、(B) Strong 对照
 
 | | (A) get/set | (B) Strong | **(C) VL / Functor** |
 |--|-------------|------------|----------------------|
@@ -295,7 +479,7 @@ over ageL (+1) alice
 
 ---
 
-## 9. Traversal / Prism 预告（VL 家族）
+## 11. Traversal / Prism 预告（VL 家族）
 
 van Laarhoven 家族靠 **加强 `f` 上的约束** 区分 optic：
 
@@ -314,7 +498,7 @@ van Laarhoven 家族靠 **加强 `f` 上的约束** 区分 optic：
 
 ---
 
-## 10. 常见误区
+## 12. 常见误区
 
 1. **「Functor」混为一谈**  
    VL 的 `Functor f` = 效果容器；**不是** Functor strength，也不是 Tambara 的上下文强度 α。后者见 Step 4。
@@ -333,17 +517,18 @@ van Laarhoven 家族靠 **加强 `f` 上的约束** 区分 optic：
 
 ---
 
-## 11. 建议阅读顺序
+## 13. 建议阅读顺序
 
 1. Step 1：get/set 与定律。  
-2. 本文 §1–§4，跑 demo 段 1–2。  
-3. 本文 §5–§7，跑 demo 段 3–7（记录、嵌套、类型变化、展开）。  
-4. Step 2：同一语义的 Strong 拼法，对照 §8。  
-5. Tambara / ∀p ↔ ∃m：Step 4–5；库 API：Step 6。
+2. 本文 §1–§3（定义 + 原理 + **组合**），跑 demo 组合段。  
+3. 本文 §4–§5，弄清 `lens` / `Const` / `Identity`。  
+4. 本文 §6–§9，跑 demo 全段（记录、嵌套、类型变化、展开）。  
+5. Step 2：Strong 拼法，对照 §10。  
+6. Tambara：Step 4–5；库 API：Step 6。
 
 ---
 
-## 12. 运行与输出对照
+## 14. 运行与输出对照
 
 ```bash
 stack exec step2b-van-laarhoven
@@ -352,7 +537,7 @@ stack exec step2b-van-laarhoven
 预期分段大致为：
 
 1. 元组 view/set/over  
-2. `(_1 . _1)` / `(_1 . _2)` 复合  
+2. 复合：`(_1 . _1)` / `(_1 . _2)` / 三层 / `view`/`over` 分配律  
 3. `nameL` / `ageL`  
 4. `personCity` 与 zip  
 5. `_1Len` + `length`  
