@@ -2,9 +2,11 @@
 
 面向：已跑通 Step 2，想把 **(B) `forall p. Strong p`** 下的组合机制讲透，并与 van Laarhoven 的 `(.)` 对照。
 
-可运行代码：[`app-step2/Main.hs`](../app-step2/Main.hs)（`stack exec step2-strong-lens`）。  
+可运行代码：[`app-step2/Main.hs`](../app-step2/Main.hs)（`stack exec step2-strong-lens`）；Tambara 视角见 Step 4。  
 VL 侧组合专章：[van-Laarhoven教程.md](van-Laarhoven教程.md) §3。  
 总原理：[原理详解.md](原理详解.md)。
+
+本文含组合原理，以及与 VL 教程同款的 **逐步代换示例**（§7）。
 
 ---
 
@@ -230,9 +232,150 @@ o = _address . _city
 
 组合不引入新坑；**绑定多态 optic** 才是坑。
 
+
 ---
 
-## 7. 和 Choice / Prism 组合的边界（预告）
+## 7. 逐步代换示例（对照 VL 教程风格）
+
+下面用 `_1` 与 `(True, 42)`，先走 `over`，再走 `view`，最后看一层组合。strength 出现的位置会标出。
+
+### 7.1 公式
+
+```haskell
+_1 = lens fst (\(_, c) b -> (b, c))
+
+lens get setP =
+  dimap (\s -> (get s, s)) (\(b, s) -> setP s b) . first'
+-- first' ≡ introduceFirst（Tambara_(,)）
+```
+
+对任意 Strong `p`：
+
+```text
+p a b
+  ─first'─▶  p (a, c) (b, c)     strength：带上下文
+  ─dimap─▶  p s t               拆树 / 装树
+```
+
+### 7.2 `over _1 not (True, 42)`（`p = (->)`）
+
+此时 `first' f (a,c) = (f a, c)`，`dimap pre post h = post . h . pre`。
+
+设 `get = fst`，`setP s b = (b, snd s)`，焦点函数 `f = not`。
+
+**第 0 步** — 管道：
+
+```haskell
+_1 not
+  = dimap (\s -> (fst s, s)) (\(b,s) -> (b, snd s)) (first' not)
+```
+
+**第 1 步** — strength：`first' not`
+
+```text
+first' not :: (Bool, c) -> (Bool, c)
+first' not (a, c) = (not a, c)
+```
+
+上下文 `c` 原样；只改焦点。这就是 strength 的作用。
+
+**第 2 步** — 前置 `pre s = (fst s, s)`
+
+```text
+s = (True, 42)
+pre s = (True, (True, 42))   -- (焦点, 整树当上下文)
+```
+
+注意：上下文取的是**整棵** `s`，不是 `snd s`；`set` 时用得到。
+
+**第 3 步** — 跑 `first' not`：
+
+```text
+first' not (True, (True, 42)) = (False, (True, 42))
+```
+
+**第 4 步** — 后置 `post (b, s) = (b, snd s)`：
+
+```text
+post (False, (True, 42)) = (False, 42)
+```
+
+**结果**：`(False, 42)`。
+
+| 步骤 | 表达式 | 值 | 谁在干活 |
+|------|--------|-----|----------|
+| 拆 | `pre (True,42)` | `(True, (True,42))` | `dimap` 前置 |
+| 抬 | `first' not …` | `(False, (True,42))` | **strength** |
+| 装 | `post …` | `(False, 42)` | `dimap` 后置 |
+
+与 VL 对照：VL 是 `fmap (setP s) (afb (get s))`；这里 strength 扮演「在积上只动左槽」，`dimap` 扮演拆/装。
+
+### 7.3 `view _1 (True, 42)`（`p = Forget`）
+
+```haskell
+view l s = runForget (l (Forget id)) s
+```
+
+`Forget` 的 strength：
+
+```haskell
+first' (Forget k) = Forget (\(a, _) -> k a)  -- 丢掉上下文，只读焦点
+```
+
+**第 1 步** — `first' (Forget id) = Forget (\(a,_) -> a)`
+
+**第 2 步** — `dimap` 对 Forget 只改输入（忽略 `post`）：
+
+```haskell
+dimap pre _ (Forget k) = Forget (k . pre)
+```
+
+于是
+
+```text
+_1 (Forget id)
+  = Forget ( (\(a,_) -> a) . (\s -> (fst s, s)) )
+  = Forget (\s -> fst s)
+```
+
+**第 3 步** — `runForget … (True, 42) = True`
+
+strength 在这里保证「只读焦点分量」；`post`/`set` 路径被 Forget 吃掉（与 VL 里 `Const` 的 `fmap` 空操作同构）。
+
+| 步骤 | 发生什么 |
+|------|----------|
+| `Forget id` | 焦点上的「只读」 |
+| `first'` | 变成「积上只读左槽」← **strength** |
+| `dimap pre` | 输入先拆成 `(get s, s)`，再读左槽 = `get s` |
+| `runForget` | 得到 `True` |
+
+### 7.4 组合 `_address . _city`（strength 抬两层）
+
+```haskell
+(_address . _city) p = _address (_city p)
+```
+
+对 `over (_address . _city) (++"!") alice`：
+
+1. 内层 `_city`：对 `Address` 做「`dimap` + `first'`」，得到「改 city」的 `Address -> Address`。
+2. 外层 `_address`：再对 `Person` 做同一套路；strength 把「改 Address」抬成「改 Person 的 address 字段」。
+
+每一层都是一次 **拆树 → strength 带上下文 → 装树**；组合只是把内层的 `p`（已是中层上的变换）交给外层当「焦点上的 `p`」。
+
+### 7.5 与 VL 同场景对照表
+
+| | VL（`Identity` / `Const`） | Strong（`(->)` / `Forget`） |
+|--|---------------------------|------------------------------|
+| 改 | `fmap (setP s) (Identity (f (get s)))` | `post . first' f . pre` |
+| 读 | `getConst (fmap … (Const (get s)))` | `runForget (Forget (k . pre))` |
+| 「带上下文」 | 藏在 `setP s :: b -> t` 的闭包里 | **显式** `first'` / `introduce` |
+
+可运行：`stack exec step2-strong-lens`；Tambara 命名见 `stack exec step4-tambara`。
+
+
+---
+
+## 8. 和 Choice / Prism 组合的边界（预告）
 
 - Lens 要求 `Strong`；Prism 要求 `Choice`。
 - `Lens . Lens = Lens`（都是 Strong）。
@@ -241,12 +384,13 @@ o = _address . _city
 
 ---
 
-## 8. 建议阅读
+## 9. 建议阅读
 
 1. Step 2 源码注释 + 本文 §2–§3。  
-2. 跑 `stack exec step2-strong-lens` 看组合段。  
-3. VL 对照：[van-Laarhoven教程.md](van-Laarhoven教程.md) §3。  
-4. Tambara：Step 4；existential：Step 5。
+2. 本文 §7 逐步代换（`over` / `view` / 组合）。  
+3. 跑 `stack exec step2-strong-lens` 看组合段。  
+4. VL 对照：[van-Laarhoven教程.md](van-Laarhoven教程.md) §3、§7 展开。  
+5. Tambara：Step 4；existential：Step 5。
 
 ---
 
@@ -255,4 +399,5 @@ o = _address . _city
 - 代码：`app-step2/Main.hs`
 - 对比：[Lens二形态对比.md](Lens二形态对比.md)
 - 原理：[原理详解.md](原理详解.md)
-- VL 组合：`docs/van-Laarhoven教程.md` §3
+- VL 组合与展开：`docs/van-Laarhoven教程.md` §3、§7
+- Tambara：`app-step4/Main.hs`
