@@ -230,7 +230,7 @@ over (l . m) f s   = over l (over m f) s        -- 改：在外层里改「内�
 | 展开 | `(l . m) pab = l (m pab)` | `(l . m) afb = l (m afb)` |
 | 读路径 | 外 `.` 内 | 同左 |
 
-差别不在组合机制，而在「中间被传递的东西」是 `p a b` 还是 `a -> f b`。
+差别不在组合机制，而在「中间被传递的东西」是 `p a b` 还是 `a -> f b`。Strong 侧展开见 [Strong-Profunctor组合.md](Strong-Profunctor组合.md)。
 
 ### 3.7 rank-2 与组合
 

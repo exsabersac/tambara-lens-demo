@@ -10,6 +10,7 @@
 -- @p a b@（焦点上的变换）抬成 @p s t@（整棵结构上的变换）」。
 --
 -- 后面接到 Tambara：Strong 恰是笛卡尔积 @(,)@ 上的 Tambara 模。
+-- 组合原理：docs/Strong-Profunctor组合.md
 module Main where
 
 --------------------------------------------------------------------------------
@@ -153,6 +154,12 @@ _cityOf = _address . _city
 alice :: Person
 alice = Person "Alice" (Address "Shanghai" "200000")
 
+nestedPair :: ((Bool, Int), Char)
+nestedPair = ((True, 1), 'x')
+
+deepTriple :: (((Bool, Int), Char), String)
+deepTriple = (((True, 1), 'x'), "z")
+
 main :: IO ()
 main = do
   putStrLn "== (->) via over / set / view =="
@@ -160,10 +167,25 @@ main = do
   print $ set  _1 False (True, 42 :: Int)
   print $ over _2 (*10) (True, 42 :: Int)
 
-  putStrLn "== nested (compose = (.)) =="
+  putStrLn "== compose = (.) （详解见 docs/Strong-Profunctor组合.md） =="
+  -- (l . m) p = l (m p)
+  print $ view (_1 . _1) nestedPair
+  print $ set  (_1 . _2) (99 :: Int) nestedPair
+  print $ over (_1 . _2) (+5) nestedPair
+  print $ view (_1 . _1 . _1) deepTriple
+  print $ over (_1 . _1 . _2) (*10) deepTriple
+  -- 分配律
+  print $ view (_1 . _2) nestedPair == view _2 (view _1 nestedPair)
+  print $ over (_1 . _2) (+5) nestedPair
+         == over _1 (over _2 (+5)) nestedPair
+  print $ view (id . _1) (True, 42 :: Int)
+  print $ view (_1 . id) (True, 42 :: Int)
+
+  putStrLn "== nested record: _address . _city =="
   print $ view _cityOf alice
   print $ set  _cityOf "Beijing" alice
   print $ over _cityOf (++ "!") alice
+  print $ view _cityOf alice == view _city (view _address alice)
 
   putStrLn "== first' is _1 on (->) =="
   print $ (first' not :: (Bool, Int) -> (Bool, Int)) (True, 1)

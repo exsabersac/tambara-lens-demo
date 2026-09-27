@@ -13,6 +13,7 @@
 | [原理详解.md](原理详解.md) | **原理长文**：get/set → profunctor → Tambara → existential/coend |
 | [Lens二形态对比.md](Lens二形态对比.md) | 三种形态：(A) get/set、(B) Strong、(C) van Laarhoven |
 | [van-Laarhoven教程.md](van-Laarhoven教程.md) | **(C) 详细教程**：推导、记录嵌套、类型变化、换 `f`、与 Strong 对照 |
+| [Strong-Profunctor组合.md](Strong-Profunctor组合.md) | **(B) 组合专章**：`(l . m) p = l (m p)`、类型表、分配律、与 VL 对照 |
 
 仓库根目录 [README.md](../README.md) 含构建说明与步骤总表。
 

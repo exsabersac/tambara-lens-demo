@@ -43,7 +43,7 @@ lens get setP = dimap (\s -> (get s, s)) (\(b,s) -> setP s b) . first'
 
 **优点**：复合即 `(.)`；换 `p` 得多种运算；与 Choice/Tambara 同一故事。  
 **缺点**：要先懂 Profunctor；rank-2 `let` 易踩坑。  
-**适合**：接 Prism / Tambara / 广义 optic。详见 Step 2、4、5。
+**适合**：接 Prism / Tambara / 广义 optic。详见 Step 2、4、5。组合机制见 [Strong-Profunctor组合.md](Strong-Profunctor组合.md)。
 
 ---
 
