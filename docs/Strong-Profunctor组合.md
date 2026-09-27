@@ -310,7 +310,56 @@ post (False, (True, 42)) = (False, 42)
 
 与 VL 对照：VL 是 `fmap (setP s) (afb (get s))`；这里 strength 扮演「在积上只动左槽」，`dimap` 扮演拆/装。
 
-### 7.3 `view _1 (True, 42)`（`p = Forget`）
+### 7.3 `set _1 False (True, 42)`（`p = (->)`）
+
+定义：
+
+```haskell
+set l b = over l (const b)
+-- 即 set l b = l (const b)
+```
+
+对 `_1`：`set _1 False = _1 (const False)`，管道与 §7.2 相同，只是焦点函数从 `not` 换成 `const False`。
+
+**第 1 步** — strength：
+
+```text
+first' (const False) (a, c) = (False, c)
+-- 不论旧焦点 a 是什么，都写成 False；上下文 c 不动
+```
+
+**第 2 步** — 前置：
+
+```text
+pre (True, 42) = (True, (True, 42))
+```
+
+**第 3 步** — 跑 strength：
+
+```text
+first' (const False) (True, (True, 42)) = (False, (True, 42))
+```
+
+**第 4 步** — 后置：
+
+```text
+post (False, (True, 42)) = (False, 42)
+```
+
+**结果**：`(False, 42)`。
+
+| 步骤 | 值 | 备注 |
+|------|-----|------|
+| `pre` | `(True, (True,42))` | 旧焦点仍被拆出，但马上被丢掉 |
+| `first' (const False)` | `(False, (True,42))` | **strength**；`const` 忽略旧 `a` |
+| `post` | `(False, 42)` | 装回 |
+
+与 `over _1 not` 的差别只在焦点函数：`not` 依赖旧值，`const False` 不依赖。VL 侧同构：`set l b = over l (const b)`，代入 `Identity . const b`。
+
+记录上同理：`set _cityOf "Beijing" alice` = `_address (_city (const "Beijing"))`，内层先把 city 写成常量，外层 strength 再抬到 Person。
+
+
+### 7.4 `view _1 (True, 42)`（`p = Forget`）
 
 ```haskell
 view l s = runForget (l (Forget id)) s
@@ -349,7 +398,7 @@ strength 在这里保证「只读焦点分量」；`post`/`set` 路径被 Forget
 | `dimap pre` | 输入先拆成 `(get s, s)`，再读左槽 = `get s` |
 | `runForget` | 得到 `True` |
 
-### 7.4 组合 `_address . _city`（strength 抬两层）
+### 7.5 组合 `_address . _city`（strength 抬两层）
 
 ```haskell
 (_address . _city) p = _address (_city p)
@@ -362,12 +411,13 @@ strength 在这里保证「只读焦点分量」；`post`/`set` 路径被 Forget
 
 每一层都是一次 **拆树 → strength 带上下文 → 装树**；组合只是把内层的 `p`（已是中层上的变换）交给外层当「焦点上的 `p`」。
 
-### 7.5 与 VL 同场景对照表
+### 7.6 与 VL 同场景对照表
 
 | | VL（`Identity` / `Const`） | Strong（`(->)` / `Forget`） |
 |--|---------------------------|------------------------------|
-| 改 | `fmap (setP s) (Identity (f (get s)))` | `post . first' f . pre` |
-| 读 | `getConst (fmap … (Const (get s)))` | `runForget (Forget (k . pre))` |
+| 改 `over` | `fmap (setP s) (Identity (f (get s)))` | `post . first' f . pre` |
+| 写 `set` | `over` 且 `f = const b` | `post . first' (const b) . pre` |
+| 读 `view` | `getConst (fmap … (Const (get s)))` | `runForget (Forget (k . pre))` |
 | 「带上下文」 | 藏在 `setP s :: b -> t` 的闭包里 | **显式** `first'` / `introduce` |
 
 可运行：`stack exec step2-strong-lens`；Tambara 命名见 `stack exec step4-tambara`。
@@ -387,7 +437,7 @@ strength 在这里保证「只读焦点分量」；`post`/`set` 路径被 Forget
 ## 9. 建议阅读
 
 1. Step 2 源码注释 + 本文 §2–§3。  
-2. 本文 §7 逐步代换（`over` / `view` / 组合）。  
+2. 本文 §7 逐步代换（`over` / `set` / `view` / 组合）。  
 3. 跑 `stack exec step2-strong-lens` 看组合段。  
 4. VL 对照：[van-Laarhoven教程.md](van-Laarhoven教程.md) §3、§7 展开。  
 5. Tambara：Step 4；existential：Step 5。
