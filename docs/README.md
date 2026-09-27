@@ -25,3 +25,4 @@
 | 4 | [`../app-step4/Main.hs`](../app-step4/Main.hs) |
 | 5 | [`../app-step5/Main.hs`](../app-step5/Main.hs) |
 | 6 | [`../app-step6/Main.hs`](../app-step6/Main.hs) |
+- [van-Laarhoven教程.md](van-Laarhoven教程.md) — VL（Functor）详细教程与三种形态对照

@@ -4,6 +4,7 @@
 --
 -- 与 Step 1 get/set、Step 2 Strong profunctor 并列的第三种常见编码。
 -- @lens@ 库默认使用本形态。
+-- 详细教程：docs/van-Laarhoven教程.md
 --
 -- 注意：这里的 @Functor f@ 是「效果容器」，不是 Functor strength / Tambara。
 module Main where

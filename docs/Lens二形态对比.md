@@ -101,3 +101,5 @@ over _2 (*10) …    → (True,420)
 - Step 2b：`stack exec step2b-van-laarhoven`
 - Step 5：`stack exec step5-optic-tambara`
 - 原理：[原理详解.md](原理详解.md)
+
+- VL 详细教程：[van-Laarhoven教程.md](van-Laarhoven教程.md)
