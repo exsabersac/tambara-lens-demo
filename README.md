@@ -68,6 +68,7 @@ stack exec step6-library-notes
 - [docs/学习路线.md](docs/学习路线.md) — 初学者叙事指南
 - [docs/概念对照表.md](docs/概念对照表.md) — 速查表
 - [docs/原理详解.md](docs/原理详解.md) — 原理推理链（推荐精读）
+- [docs/DaoFP-Tambara推导.md](docs/DaoFP-Tambara推导.md) — DaoFP Ch.19 Tambara 通俗重排推导
 - [docs/Lens二形态对比.md](docs/Lens二形态对比.md) — 三种形态：get/set、Strong、van Laarhoven
 - [docs/van-Laarhoven教程.md](docs/van-Laarhoven教程.md) — VL（Functor）形态详细教程
 
