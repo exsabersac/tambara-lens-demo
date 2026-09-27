@@ -16,3 +16,15 @@ executables:
     main: Main.hs
     source-dirs: app-step3
     ghc-options: [-Wall]
+  step4-tambara:
+    main: Main.hs
+    source-dirs: app-step4
+    ghc-options: [-Wall]
+  step5-optic-tambara:
+    main: Main.hs
+    source-dirs: app-step5
+    ghc-options: [-Wall]
+  step6-library-notes:
+    main: Main.hs
+    source-dirs: app-step6
+    ghc-options: [-Wall]
