@@ -69,12 +69,14 @@ over l f s = runIdentity (l (Identity . f) s)  -- f = Identity
 2. 和 Tambara「换张量」叙述不如 (B) 直接；Prism/Traversal 要换成别的类约束（如 `Applicative`），统一故事要多绕一步。
 3. 易与「Functor strength」术语混淆——名字里都有 Functor，机制不同。
 
-**小例子**（`stack exec step2b-van-laarhoven`）：
+**小例子**（`stack exec step2b-van-laarhoven`；更细见 [van-Laarhoven教程.md](van-Laarhoven教程.md)）：
 
 ```text
-view _1 (True,42)  → True
-set  _1 False …    → (False,42)
-over _2 (*10) …    → (True,420)
+view _1 (True,42)              → True
+set  _1 False …                → (False,42)
+over _2 (*10) …                → (True,420)
+view (addressL . cityL) alice  → "Shanghai"
+over _1Len length ("hi",True)  → (2,True)
 ```
 
 **适合**：读/写 `lens` 库代码；与 (B) 对照「同语义、不同量化」。
