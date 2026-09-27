@@ -35,6 +35,19 @@ executable step2-strong-lens
       base >=4.7 && <5
   default-language: Haskell2010
 
+executable step2b-van-laarhoven
+  main-is: Main.hs
+  other-modules:
+      Paths_tambara_lens_demo
+  autogen-modules:
+      Paths_tambara_lens_demo
+  hs-source-dirs:
+      app-step2-vl
+  ghc-options: -Wall
+  build-depends:
+      base >=4.7 && <5
+  default-language: Haskell2010
+
 executable step3-optics-table
   main-is: Main.hs
   other-modules:

@@ -12,6 +12,10 @@ executables:
     main: Main.hs
     source-dirs: app-step2
     ghc-options: [-Wall]
+  step2b-van-laarhoven:
+    main: Main.hs
+    source-dirs: app-step2-vl
+    ghc-options: [-Wall]
   step3-optics-table:
     main: Main.hs
     source-dirs: app-step3

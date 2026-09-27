@@ -11,7 +11,7 @@
 | [学习路线.md](学习路线.md) | 把 steps 1–6 串成故事；常见坑 |
 | [概念对照表.md](概念对照表.md) | 约束 ↔ optic ↔ 张量 速查 |
 | [原理详解.md](原理详解.md) | **原理长文**：get/set → profunctor → Tambara → existential/coend |
-| [Lens二形态对比.md](Lens二形态对比.md) | 经典 get/set (A) vs `forall Strong` (B)：优缺点与例子 |
+| [Lens三种形态对比.md](Lens三种形态对比.md) | 经典 get/set (A) vs `forall Strong` (B)：优缺点与例子 |
 
 仓库根目录 [README.md](../README.md) 含构建说明与步骤总表。
 

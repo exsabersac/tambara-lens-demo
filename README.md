@@ -9,7 +9,7 @@
 - Stack **lts-21.25**，GHC **9.4.8**。
 - 注释以中文为主，术语保留精确英文（Profunctor、Tambara、coend …）。
 
-更长的推理链见 **[docs/原理详解.md](docs/原理详解.md)**；两种 Lens 形态对比见 **[docs/Lens二形态对比.md](docs/Lens二形态对比.md)**。
+更长的推理链见 **[docs/原理详解.md](docs/原理详解.md)**；三种 Lens 形态对比（get/set、Strong、van Laarhoven）见 **[docs/Lens二形态对比.md](docs/Lens二形态对比.md)**。
 
 ## 前置条件
 
@@ -37,6 +37,7 @@ stack build
 
 stack exec step1-classic-lens
 stack exec step2-strong-lens
+stack exec step2b-van-laarhoven
 stack exec step3-optics-table
 stack exec step4-tambara
 stack exec step5-optic-tambara
@@ -51,6 +52,7 @@ stack exec step6-library-notes
 |------|------------|------|--------|
 | 1 | `step1-classic-lens` | [app/Main.hs](app/Main.hs) | 经典 `view`/`set` Lens、三条定律、复合 |
 | 2 | `step2-strong-lens` | [app-step2/Main.hs](app-step2/Main.hs) | `Profunctor` + `Strong`；`Lens = forall Strong` |
+| 2b | `step2b-van-laarhoven` | [app-step2-vl/Main.hs](app-step2-vl/Main.hs) | van Laarhoven：`forall f. Functor f => …`（`lens` 库形态） |
 | 3 | `step3-optics-table` | [app-step3/Main.hs](app-step3/Main.hs) | 约束表：Lens / Prism / Affine / Iso / Traversal |
 | 4 | `step4-tambara` | [app-step4/Main.hs](app-step4/Main.hs) | `Tambara`；Strong≅Tambara_(,)，Choice≅Tambara_Either |
 | 5 | `step5-optic-tambara` | [app-step5/Main.hs](app-step5/Main.hs) | existential / coend ↔ ∀ Tambara；round-trip |
@@ -66,7 +68,7 @@ stack exec step6-library-notes
 - [docs/学习路线.md](docs/学习路线.md) — 初学者叙事指南
 - [docs/概念对照表.md](docs/概念对照表.md) — 速查表
 - [docs/原理详解.md](docs/原理详解.md) — 原理推理链（推荐精读）
-- [docs/Lens二形态对比.md](docs/Lens二形态对比.md) — 经典 get/set vs `forall Strong` 优缺点与例子
+- [docs/Lens二形态对比.md](docs/Lens二形态对比.md) — 三种形态：get/set、Strong、van Laarhoven
 
 ## 许可
 
