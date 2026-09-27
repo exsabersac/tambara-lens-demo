@@ -17,7 +17,7 @@
 ∫_{P : Tambara} Set(P⟨a,b⟩, P⟨s,t⟩)  ≅  ∫^c C(s, c×a) × C(c×b, t)
 ```
 
-Haskell 侧即 `forall p. Strong p => p a b -> p s t ≅` existential / get-set lens。
+Haskell 侧即 `forall p. Strong p => p a b -> p s t` ≅ existential / get-set lens。
 
 **证据 / 动机。** 经典 `Lens` 的 getter 用函数复合即可；setter 要嵌套手写，existential 形 `∃c.…` 也没有变成「函数」。几何里旋转若用轴角公式复合很丑，换成矩阵/四元数就变成乘法——同样地，profunctor 表示让 optic 变成 `p a b → p s t` 形的函数，复合回到 `(.)`。Iso 只要裸 `Profunctor`；要得到真正的 Lens，必须给 `P` 加上「能把上下文 `c` 平行带进两边」的结构 α，那就是 Tambara。
 
@@ -73,14 +73,11 @@ Getter 是最简 optic；其它 optic 的 get/set 复合别扭，但它们的 fu
 ∫_{P : T} Set((U P) a, (U P) s)  ≅  (Φ Y^a) s
 ```
 
-其中 `Φ = U ∘ F` 是 monad，`Y^a = C(a,-)`。optics 推导里把对象换成对 `⟨a,b⟩`、`⟨s,t⟩`，functors 换成 profunctors，`T` 换成 Tambara 范畴——右端就会变成 existential lens。**这是整章的总引擎**；后文 §4 只是把它实例化。
+其中 `Φ = U ∘ F` 是 monad，`Y^a = C(a, -)`（Yoneda；`U P` 为 forgetful 应用到 `P`）。optics 推导里把对象换成对 `⟨a,b⟩`、`⟨s,t⟩`，functors 换成 profunctors，`T` 换成 Tambara 范畴——右端就会变成 existential lens。**这是整章的总引擎**；后文 §4 只是把它实例化。
 
-<details>
-<summary>附录直觉：Cayley / DList（压成旁支，不占主线）</summary>
-
-Cayley：每个 monoid 同构于某组自函数（post-composition 表示）。Haskell 里 list monoid 的 Cayley 形是 difference list `DList a = [a] → [a]`，`rep as = (as ++)`，把 `O(N²)` 的 `reverse` 变成线性。这与「用全体表示重建」同属表示论家族，但 **不是** optics 主公式的必要步骤；读原文时可扫过，不必在推导链上停留。
-
-</details>
+> **附录直觉：Cayley / DList**（压成旁支，不占主线）
+>
+> Cayley：每个 monoid 同构于某组自函数（post-composition 表示）。Haskell 里 list monoid 的 Cayley 形是 difference list `DList a = [a] → [a]`，`rep as = (as ++)`，把 `O(N²)` 的 `reverse` 变成线性。这与「用全体表示重建」同属表示论家族，但 **不是** optics 主公式的必要步骤；读原文时可扫过，不必在推导链上停留。
 
 ---
 
@@ -147,8 +144,17 @@ toIsoP (f, g) = dimap f g
 
 ### 3.2 幺半相干
 
-- 单位：`α_{⟨a,b⟩, 1} = id`（`1` 为终端对象 / 积单位）；
-- 结合：`α_{⟨a,b⟩, c'×c} ≅ α_{⟨c×a,c×b⟩, c'} ∘ α_{⟨a,b⟩, c}`（隐含结合子）。
+- 单位（`1` 为终端对象 / 积单位）：
+
+  ```text
+  α_{⟨a,b⟩, 1} = id
+  ```
+
+- 结合（隐含结合子）：
+
+  ```text
+  α_{⟨a,b⟩, c'×c}  ≅  α_{⟨c×a, c×b⟩, c'} ∘ α_{⟨a,b⟩, c}
+  ```
 
 ### 3.3 态射
 
@@ -189,7 +195,7 @@ class Profunctor p => Tambara ten p where
 | 光学角色 | 定义 Lens/Prism 的「能带上下文」 | 单子/应用函子、另一套遍历故事 |
 | Haskell 名 | `Strong` / `Choice` / `Tambara ten` | 常称 strength，与 `Data.Functor` 相关 |
 
-名字都有 strength，**不是同一个东西**。见 `Strong` 就想 Tambara_(,)，不要想成 `f a → f (c,a)`。
+名字都有 strength，**不是同一个东西**。见 `Strong` 就想 `Tambara (,) p`，不要想成 `f a → f (c,a)`。
 
 ---
 
@@ -206,16 +212,29 @@ class Profunctor p => Tambara ten p where
 
 ### 4.1 三步路线图（读者不必跟完所有 end 演算）
 
-1. **Comonad Θ。** 在 profunctor 范畴上定义  
-   `(Θ P)⟨a,b⟩ = ∫_c P⟨c×a, c×b⟩`。  
+1. **Comonad Θ。** 在 profunctor 范畴上定义
+
+   ```text
+   (Θ P)⟨a,b⟩  =  ∫_c P⟨c×a, c×b⟩
+   ```
+
    其 **coalgebras** `P → Θ P` 恰好是一族 α——即 Tambara modules。更强地，它们是 Θ 的 Eilenberg–Moore coalgebras，故 Tambara 范畴 = EM(Θ)。
 
-2. **伴随 monad Φ。** Θ 的左伴随是 monad  
-   `(Φ P)⟨s,t⟩ = ∫^{u,v,c} (C^op×C)(c•⟨u,v⟩, ⟨s,t⟩) × P⟨u,v⟩`。  
-   EM(Φ) 与 EM(Θ) 相同，于是得到 free/forgetful `F ⊣ U`，且 `Φ = U∘F`——正是 §1.4 总引擎需要的伴随。
+2. **伴随 monad Φ。** Θ 的左伴随是 monad
 
-3. **作用在 representable 上。** 把 `Φ` 作用在 `(C^op×C)(⟨a,b⟩, -)` 上，再在 `⟨s,t⟩` 求值；co-Yoneda 消掉多余变量后得到  
-   `∫^c C(s, c×a) × C(c×b, t)`——existential lens。
+   ```text
+   (Φ P)⟨s,t⟩  =  ∫^{u,v,c} (C^op×C)(c • ⟨u,v⟩, ⟨s,t⟩) × P⟨u,v⟩
+   ```
+
+   EM(Φ) 与 EM(Θ) 相同，于是得到 free/forgetful `F ⊣ U`，且 `Φ = U ∘ F`——正是 §1.4 总引擎需要的伴随。
+
+3. **作用在 representable 上。** 把 `Φ` 作用在 `(C^op × C)(⟨a,b⟩, -)` 上，再在 `⟨s,t⟩` 求值；co-Yoneda 消掉多余变量后得到
+
+   ```text
+   ∫^c C(s, c×a) × C(c×b, t)
+   ```
+
+   即 existential lens。
 
 把这三步代入 §1.4 的骨架公式，即得本节开头的同构。细节 end 演算可回原文；教学上抓住「Θ 的 coalgebra = Tambara；Φ(representable) = existential」即可。
 
