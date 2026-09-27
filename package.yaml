@@ -8,3 +8,7 @@ executables:
     main: Main.hs
     source-dirs: app
     ghc-options: [-Wall]
+  step2-strong-lens:
+    main: Main.hs
+    source-dirs: app-step2
+    ghc-options: [-Wall]
