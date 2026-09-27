@@ -1,0 +1,10 @@
+name: tambara-lens-demo
+version: 0.1.0.0
+license: BSD-3-Clause
+dependencies:
+- base >= 4.7 && < 5
+executables:
+  step1-classic-lens:
+    main: Main.hs
+    source-dirs: app
+    ghc-options: [-Wall]
