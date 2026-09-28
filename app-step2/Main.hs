@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE InstanceSigs #-}
 
 -- | 第 2 步：Profunctor + Strong 编码的 Lens（仅 base）
 --
@@ -41,10 +42,13 @@ class Profunctor p => Strong p where
 
 -- | 函数本身是 Profunctor / Strong：这是 @over@ / @set@ 的载体。
 instance Profunctor (->) where
+  dimap :: (a' -> a) -> (b -> b') -> (a -> b) -> a' -> b'
   dimap f g h = g . h . f
 
 instance Strong (->) where
+  first' :: (a -> b) -> (a, c) -> (b, c)
   first'  f (a, c) = (f a, c)
+  second' :: (a -> b) -> (c, a) -> (c, b)
   second' f (c, a) = (c, f a)
 
 -- | @Forget r@：只关心「从左边读出 @r@」，忽略右边类型参数。
