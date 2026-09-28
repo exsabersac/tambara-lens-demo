@@ -29,6 +29,77 @@ Haskell 侧即 `forall p. Strong p => p a b -> p s t` ≅ existential / get-set 
 
 ## 1. 热身：用「全部表示」重建箭头（Tannakian）
 
+<a id="sec-copresheaf"></a>
+
+### 1.0 co-presheaf 范畴（[C, Set]）
+
+**直接陈述：** **co-presheaf 范畴**（co-presheaf category）就是函子范畴 \([\mathcal{C},\mathrm{Set}]\)：对象是协变函子 \(F : \mathcal{C} \to \mathrm{Set}\)，态射是自然变换。相对 **presheaf** 范畴 \([\mathcal{C}^{\mathrm{op}},\mathrm{Set}]\) 而言，定义域不取 opposite，故称 “co”。Tannakian 重建、Iso / Lens 的 ∀ 侧，都是在这类函子范畴（或其带结构的子范畴）上取 end。
+
+#### 对照表：presheaf vs co-presheaf
+
+| | **presheaf** | **co-presheaf** |
+|--|--------------|-----------------|
+| 函子 | \(F : \mathcal{C}^{\mathrm{op}} \to \mathrm{Set}\)（反变） | \(F : \mathcal{C} \to \mathrm{Set}\)（协变） |
+| 函子范畴 | \([\mathcal{C}^{\mathrm{op}},\mathrm{Set}]\) | \([\mathcal{C},\mathrm{Set}]\) |
+| 代表元（Yoneda） | \(Y_a = \mathcal{C}(-,a)\) | \(Y^{a} = \mathcal{C}(a,-)\) |
+| 在本仓库 / DaoFP 中的角色 | 常作背景对照 | Tannakian 表示侧；profunctor 是 \(\mathcal{C}^{\mathrm{op}}\times\mathcal{C}\) 上的 co-presheaf |
+
+后文凡写 \([\mathcal{C},\mathrm{Set}]\) 或「表示范畴」，默认指 co-presheaf 侧。
+
+#### Yoneda embedding、Yoneda lemma、为何是 Tannakian 的舞台
+
+Yoneda embedding 把对象 \(a\) 映到 representable co-presheaf
+
+$$
+Y^{a} \;=\; \mathcal{C}(a,-) \;:\; \mathcal{C} \to \mathrm{Set}
+$$
+
+Yoneda lemma：对任意 \(F : \mathcal{C} \to \mathrm{Set}\)，
+
+$$
+F a \;\cong\; [\mathcal{C},\mathrm{Set}]\big(Y^{a},\, F\big)
+$$
+
+即「在 \(a\) 处取值」同构于「从 representable \(Y^{a}\) 出发的自然变换」。Tannakian 主公式正是在 \([\mathcal{C},\mathrm{Set}]\) 上对所有 \(F\) 取 end：
+
+$$
+\int_{F : [\mathcal{C},\mathrm{Set}]} \mathrm{Set}(F a, F b) \;\cong\; \mathcal{C}(a,b)
+$$
+
+证明走两次 Yoneda（见 §1.2）：先用 lemma 把 \(Fa\) 换成 \([\mathcal{C},\mathrm{Set}](Y^{a}, F)\)，再对函子范畴用 Yoneda 推论得到 \(\mathcal{C}(a,b)\)。因此 **co-presheaf 范畴是重建箭头的舞台**：对象提供表示，态射（自然变换）提供 equivariant 约束，end 把「全体表示一起」收成 hom-set。
+
+#### Fiber functor
+
+固定对象 \(a\)，**fiber functor**（纤维函子）是求值
+
+$$
+\mathrm{fib}_{a} : [\mathcal{C},\mathrm{Set}] \to \mathrm{Set},\qquad F \mapsto F a
+$$
+
+Monoid 特例（单对象 \(\mathcal{M}\)）里常写 \(\mathrm{fib}\, F = F*\)。主公式左端可看作：对所有 \(F\)，从 \(\mathrm{fib}_{a} F\) 到 \(\mathrm{fib}_{b} F\) 的、与自然变换相容的一族映射——即 fiber 之间的 equivariant maps。单看某一个 \(Fa\) 不够重建；必须连同全体 \(F\) 与它们之间的自然变换一起看。
+
+#### 为何在 optics / Tambara 中反复出现
+
+同一舞台换底范畴 / 换子范畴，就是整章的升级路径：
+
+1. **普通 Tannaka：** \(T = [\mathcal{C},\mathrm{Set}]\)（裸 co-presheaves）。End 重建 \(\mathcal{C}(a,b)\)；Haskell 侧即 `forall f. Functor f => f a -> f b`（Getter，§1.3）。
+2. **Profunctor 情形：** 把 \(\mathcal{C}\) 换成 \(\mathcal{C}^{\mathrm{op}}\times\mathcal{C}\)。该积范畴上的 co-presheaves 恰是 **profunctors** \(P : \mathcal{C}^{\mathrm{op}}\times\mathcal{C}\to\mathrm{Set}\)。裸 Profunctor 上的 Tannakian 给出 Iso（§2.1）。
+3. **Tambara：** 不再对全体 profunctor 取 end，而对带 strength \(\alpha\) 的子范畴（Tambara modules）取 end。Forgetful \(U\) 忘掉 \(\alpha\)；free \(F\)（Pastro 构造）自由添加 strength；monad \(\Phi = U \circ F\)。代入 §1.4 总引擎，右端变成 existential lens（§4）。
+
+链路一句话：co-presheaf →（换底）profunctor →（加 \(\alpha\)、free/forget）Tambara。
+
+#### Haskell 对照（短表）
+
+| 范畴侧 | Haskell 侧 |
+|--------|------------|
+| \(F : \mathcal{C}\to\mathrm{Set}\)（co-presheaf） | `Functor f`；值 \(F a\) 写作 `f a` |
+| \(\int_F \mathrm{Set}(Fa,Fb)\) | `forall f. Functor f => f a -> f b` |
+| \(P : \mathcal{C}^{\mathrm{op}}\times\mathcal{C}\to\mathrm{Set}\) | `Profunctor p`；值 \(P\langle a,b\rangle\) 写作 `p a b` |
+| 带 \(\alpha\) 的 Tambara | `Strong p`（积）/ `Choice p`（和） |
+| \(\int_{P:\mathrm{Tambara}}\mathrm{Set}(P\langle a,b\rangle, P\langle s,t\rangle)\) | `forall p. Strong p => p a b -> p s t` |
+
+范畴在前；Haskell 只是 end / 多态的记法对照。细节实现见 §1.3、§2.1、§4.2。
+
 **直接陈述（主公式）：**
 
 $$
@@ -372,7 +443,8 @@ Traversal 要同时处理「\(n\) 个焦点」，类型安全需要依赖类型�
 | 原文 | 本文 |
 |------|------|
 | 章首动机 | §0 |
-| § Tannakian Reconstruction | §1 |
+| （预备）co-presheaf / Yoneda / fiber | [§1.0](#sec-copresheaf) |
+| § Tannakian Reconstruction | §1（含 §1.0–§1.4） |
 | § Profunctor Lenses · Iso / 缺口 / Tambara / 主公式 / Haskell | §2–§4 |
 | § General Optics（⊗、Prism、Traversal） | §5 |
 | § Mixed Optics | §5 表末行 |
@@ -410,7 +482,7 @@ $$
 
 以及带伴随的推广（见 §7.1.6）。
 5. **可跳读提示：** 整节不可跳；其中 Cayley/DList 子节可扫过（见下）。
-6. **对照本文 / 仓库：** 本文 [§1](#1-热身用全部表示重建箭头tannakian)。
+6. **对照本文 / 仓库：** 本文 [§1](#1-热身用全部表示重建箭头tannakian)；预备语言见 [§1.0 co-presheaf](#sec-copresheaf)。
 
 #### 7.1.1 Monoids and their Representations
 

@@ -11,7 +11,7 @@
 | [学习路线.md](学习路线.md) | 把 steps 1–6 串成故事；常见坑 |
 | [概念对照表.md](概念对照表.md) | 约束 ↔ optic ↔ 张量 速查 |
 | [原理详解.md](原理详解.md) | **原理长文**：get/set → profunctor → Tambara → existential/coend |
-| [DaoFP-Tambara推导.md](DaoFP-Tambara推导.md) | **DaoFP Ch.19 通俗重排**：Tannakian → Tambara → ∀↔∃；与 Step 4–5 对照；[§7 各节目的导读](DaoFP-Tambara推导.md#7-读原文章节地图各节目的导读) |
+| [DaoFP-Tambara推导.md](DaoFP-Tambara推导.md) | **DaoFP Ch.19 通俗重排**：Tannakian → Tambara → ∀↔∃；与 Step 4–5 对照；[§1.0 co-presheaf](DaoFP-Tambara推导.md#sec-copresheaf)；[§7 各节目的导读](DaoFP-Tambara推导.md#7-读原文章节地图各节目的导读) |
 | [Lens二形态对比.md](Lens二形态对比.md) | 三种形态：(A) get/set、(B) Strong、(C) van Laarhoven |
 | [van-Laarhoven教程.md](van-Laarhoven教程.md) | **(C) 详细教程**：推导、记录嵌套、类型变化、换 `f`、与 Strong 对照 |
 | [Strong-Profunctor组合.md](Strong-Profunctor组合.md) | **(B) 组合专章**：`(l . m) p = l (m p)`、类型表、分配律、与 VL 对照 |
